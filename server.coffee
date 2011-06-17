@@ -188,6 +188,10 @@ server = Http.createServer (req, resp) ->
     else
       return proxyHandler(req, resp)
 
+# top level exception handler to keep server running
+process.on 'uncaughtException', (error) ->
+  log(error.stack)
+
 ## start server
 console.log "SSL-Proxy running on #{port} with pid:#{process.pid}."
 console.log "Using the secret key #{shared_key}"

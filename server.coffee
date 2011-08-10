@@ -24,7 +24,7 @@ RESTRICTED_IPS = /^((10\.)|(127\.)|(169\.254)|(192\.168)|(172\.((1[6-9])|(2[0-9]
 
 total_connections   = 0
 current_connections = 0
-expire_msec         = 31536000
+expire_sec         = 31536000
 started_at          = new Date
 
 four_oh_four = (resp, msg) ->
@@ -35,7 +35,7 @@ four_oh_four = (resp, msg) ->
 finish = (resp, str) ->
   current_connections -= 1
   current_connections  = 0 if current_connections < 1
-  resp.connection && resp.end str
+  resp.connection? && resp.end str
 
 # decode a string of two char hex digits
 hexdec = (str) ->
@@ -46,125 +46,126 @@ hexdec = (str) ->
     buf.toString()
 
 server = Http.createServer (req, resp) ->
-  if req.method != 'GET' || req.url == '/'
-    resp.writeHead 200
-    resp.end 'hwhat'
-  else if req.url == '/favicon.ico'
-    expires = new Date()
-    expires.setSeconds(expires.getSeconds() + expire_sec)
-    resp.writeHead 200, {
-      'Cache-Control': 'public;max-age='+ expire_sec,
-      'Expires': expires.toUTCString() }
-    resp.end 'ok'
-  else if req.url == '/status'
-    resp.writeHead 200
-    resp.end "ok #{current_connections}/#{total_connections} since #{started_at.toString()}"
-  else
-    total_connections   += 1
-    current_connections += 1
-    url = Url.parse req.url
+  right_now = new Date()
+  resp.setHeader('Date', right_now.toUTCString())
 
-    transferred_headers =
-      'Via'                    : process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
-      'Accept'                 : req.headers.accept
-      'Accept-Encoding'        : req.headers['accept-encoding']
-      'x-forwarded-for'        : req.headers['x-forwarded-for']
-      'x-content-type-options' : 'nosniff'
+  if req.method != 'GET'
+    resp.end '405 Method Not Allowed'
+    return
 
-    delete(req.headers.cookie)
-
-    [query_digest, encoded_url] = url.pathname.replace(/^\//, '').split("/", 2)
-    if encoded_url = hexdec(encoded_url)
-      url_type = 'path'
-      dest_url = encoded_url
+  switch req.url
+    when '/'
+      resp.writeHead 200
+      resp.end "Camo #{version}"
+      return
+    when '/favicon.ico'
+      expires = new Date
+      expires.setSeconds(right_now.getSeconds() + expire_sec)
+      resp.writeHead 200, {
+        'Cache-Control': 'public;max-age='+ expire_sec,
+        'Expires': expires.toUTCString() }
+      resp.end 'ok'
+      return
+    when '/status'
+      resp.writeHead 200
+      resp.end "ok #{current_connections}/#{total_connections} since #{started_at.toString()}"
+      return
     else
-      url_type = 'query'
-      dest_url = QueryString.parse(url.query).url
+      total_connections   += 1
+      current_connections += 1
+      url = Url.parse req.url
 
-    log({
-      type:     url_type
-      url:      req.url
-      headers:  req.headers
-      dest:     dest_url
-      digest:   query_digest
-    })
+      transferred_headers =
+        'Via'                    : process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
+        'Accept'                 : req.headers.accept
+        'Accept-Encoding'        : req.headers['accept-encoding']
+        'x-forwarded-for'        : req.headers['x-forwarded-for']
+        'x-content-type-options' : 'nosniff'
 
-    if url.pathname? && dest_url
-      hmac = Crypto.createHmac("sha1", shared_key)
-      hmac.update(dest_url)
+      delete(req.headers.cookie)
 
-      hmac_digest = hmac.digest('hex')
-
-      if hmac_digest == query_digest
-        url = Url.parse dest_url
-
-        if url.host? && !url.host.match(RESTRICTED_IPS)
-          if ALLOWED_HOSTS != '' and !url.host.match(ALLOWED_HOSTS)
-            return four_oh_four(resp, "Hitting excluded hostnames")
-          # exclude takes priority over whitelist, so do exclude
-          # check afterwards
-          if url.host.match(EXCLUDED_HOSTS)
-            return four_oh_four(resp, "Hitting excluded hostnames")
-
-          src = Http.createClient url.port || 80, url.hostname
-
-          src.on 'error', (error) ->
-            four_oh_four(resp, "Client Request error #{error.stack}")
-
-          query_path = url.pathname
-          if url.query?
-            query_path += "?#{url.query}"
-
-          transferred_headers.host = url.host
-
-          log transferred_headers
-
-          srcReq = src.request 'GET', query_path, transferred_headers
-
-          srcReq.on 'response', (srcResp) ->
-            log srcResp.headers
-
-            content_length  = srcResp.headers['content-length']
-
-            if content_length > 5242880
-              four_oh_four(resp, "Content-Length exceeded")
-            else
-              newHeaders =
-                'expires'                : srcResp.headers['expires']
-                'content-type'           : srcResp.headers['content-type']
-                'cache-control'          : srcResp.headers['cache-control']
-                'content-length'         : content_length
-                'Camo-Host'              : camo_hostname
-                'X-Content-Type-Options' : 'nosniff'
-
-              srcResp.on 'end', -> finish resp
-              srcResp.on 'error', -> finish resp
-
-              switch srcResp.statusCode
-                when 200
-                  if newHeaders['content-type'] && newHeaders['content-type'].slice(0, 5) != 'image'
-                    four_oh_four(resp, "Non-Image content-type returned")
-
-                  log newHeaders
-
-                  resp.writeHead srcResp.statusCode, newHeaders
-                  srcResp.on 'data', (chunk) ->
-                    resp.write chunk
-
-                when 304
-                  resp.writeHead srcResp.statusCode, newHeaders
-
-                else
-                  four_oh_four(resp, "Responded with #{srcResp.statusCode}:#{srcResp.headers}")
-
-          srcReq.on 'error', -> finish resp
-          srcReq.end()
-        else
-          four_oh_four(resp, "No host found #{url.host}")
+      [query_digest, encoded_url] = url.pathname.replace(/^\//, '').split("/", 2)
+      if encoded_url = hexdec(encoded_url)
+        url_type = 'path'
+        dest_url = encoded_url
       else
-        four_oh_four(resp, "checksum mismatch #{hmac_digest}:#{query_digest}")
-    else
-      four_oh_four(resp, "No pathname provided on the server")
+        url_type = 'query'
+        dest_url = QueryString.parse(url.query).url
+
+      log(
+        type:     url_type
+        url:      req.url
+        headers:  req.headers
+        dest:     dest_url
+        digest:   query_digest
+      )
+
+      if url.pathname? && dest_url?
+        hmac = Crypto.createHmac("sha1", shared_key)
+        hmac.update(dest_url)
+        hmac_digest = hmac.digest('hex')
+
+        if hmac_digest == query_digest
+          url = Url.parse dest_url
+
+          if url.host? && !url.host.match(RESTRICTED_IPS)
+            if ALLOWED_HOSTS != '' and !url.host.match(ALLOWED_HOSTS)
+              return four_oh_four(resp, "Hitting excluded hostnames")
+            # exclude takes priority over whitelist, so do exclude
+            # check afterwards
+            if url.host.match(EXCLUDED_HOSTS)
+              return four_oh_four(resp, "Hitting excluded hostnames")
+
+            src = Http.createClient url.port || 80, url.hostname
+
+            src.on 'error', (error) ->
+              four_oh_four(resp, "Client Request error #{error.stack}")
+
+            query_path = url.pathname
+            query_path += "?#{url.query}" if url.query?
+
+            transferred_headers.host = url.host
+            log transferred_headers
+
+            srcReq = src.request 'GET', query_path, transferred_headers
+            srcReq.on 'response', (srcResp) ->
+              log srcResp.headers
+
+              content_length  = srcResp.headers['content-length']
+              if content_length > 5242880
+                four_oh_four(resp, "Content-Length exceeded")
+              else
+                newHeaders =
+                  'expires'                : srcResp.headers['expires']
+                  'content-type'           : srcResp.headers['content-type']
+                  'cache-control'          : srcResp.headers['cache-control']
+                  'content-length'         : content_length
+                  'Camo-Host'              : camo_hostname
+                  'X-Content-Type-Options' : 'nosniff'
+
+                srcResp.on 'end', -> finish resp
+                srcResp.on 'error', -> finish resp
+
+                switch srcResp.statusCode
+                  when 200
+                    if newHeaders['content-type']?.slice(0, 5) != 'image'
+                      four_oh_four(resp, "Non-Image content-type returned")
+                    log newHeaders
+                    resp.writeHead srcResp.statusCode, newHeaders
+                    srcResp.on 'data', (chunk) -> resp.write chunk
+                  when 304
+                    resp.writeHead srcResp.statusCode, newHeaders
+                  else
+                    four_oh_four(resp, "Responded with #{srcResp.statusCode}:#{srcResp.headers}")
+
+            srcReq.on 'error', -> finish resp
+            srcReq.end()
+          else
+            four_oh_four(resp, "No host found #{url.host}")
+        else
+          four_oh_four(resp, "checksum mismatch #{hmac_digest}:#{query_digest}")
+      else
+        four_oh_four(resp, "No pathname provided on the server")
 
 console.log "SSL-Proxy running on #{port} with pid:#{process.pid}."
 console.log "Using the secret key #{shared_key}"

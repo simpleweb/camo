@@ -24,6 +24,7 @@ RESTRICTED_IPS = /^((10\.)|(127\.)|(169\.254)|(192\.168)|(172\.((1[6-9])|(2[0-9]
 
 total_connections   = 0
 current_connections = 0
+expire_msec         = 31536000
 started_at          = new Date
 
 four_oh_four = (resp, msg) ->
@@ -49,7 +50,11 @@ server = Http.createServer (req, resp) ->
     resp.writeHead 200
     resp.end 'hwhat'
   else if req.url == '/favicon.ico'
-    resp.writeHead 200
+    expires = new Date()
+    expires.setSeconds(expires.getSeconds() + expire_sec)
+    resp.writeHead 200, {
+      'Cache-Control': 'public;max-age='+ expire_sec,
+      'Expires': expires.toUTCString() }
     resp.end 'ok'
   else if req.url == '/status'
     resp.writeHead 200
@@ -132,11 +137,8 @@ server = Http.createServer (req, resp) ->
                 'Camo-Host'              : camo_hostname
                 'X-Content-Type-Options' : 'nosniff'
 
-              srcResp.on 'end', ->
-                finish resp
-
-              srcResp.on 'error', ->
-                finish resp
+              srcResp.on 'end', -> finish resp
+              srcResp.on 'error', -> finish resp
 
               switch srcResp.statusCode
                 when 200
@@ -155,11 +157,8 @@ server = Http.createServer (req, resp) ->
                 else
                   four_oh_four(resp, "Responded with #{srcResp.statusCode}:#{srcResp.headers}")
 
-          srcReq.on 'error', ->
-            finish resp
-
+          srcReq.on 'error', -> finish resp
           srcReq.end()
-
         else
           four_oh_four(resp, "No host found #{url.host}")
       else

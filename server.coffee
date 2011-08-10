@@ -4,9 +4,10 @@ Http        = require 'http'
 Crypto      = require 'crypto'
 QueryString = require 'querystring'
 
-port            = parseInt process.env.PORT        || 8081
 version         = "0.3.0"
+port            = parseInt process.env.PORT        || 8081
 excluded        = process.env.CAMO_HOST_EXCLUSIONS || '*.example.org'
+allowed         = process.env.CAMO_HOST_WHITELIST  || ''
 shared_key      = process.env.CAMO_KEY             || '0x24FEEDFACEDEADBEEFCAFE'
 camo_hostname   = process.env.CAMO_HOSTNAME        || "unknown"
 logging_enabled = process.env.CAMO_LOGGING_ENABLED || "disabled"
@@ -18,6 +19,7 @@ log = (msg) ->
     console.log("--------------------------------------------")
 
 EXCLUDED_HOSTS = new RegExp(excluded.replace(".", "\\.").replace("*", "\\.*"))
+ALLOWED_HOSTS  = new RegExp(allowed.replace(".", "\\.").replace("*", "\\.*"))
 RESTRICTED_IPS = /^((10\.)|(127\.)|(169\.254)|(192\.168)|(172\.((1[6-9])|(2[0-9])|(3[0-1]))))/
 
 total_connections   = 0
@@ -92,6 +94,10 @@ server = Http.createServer (req, resp) ->
         url = Url.parse dest_url
 
         if url.host? && !url.host.match(RESTRICTED_IPS)
+          if ALLOWED_HOSTS != '' and !url.host.match(ALLOWED_HOSTS)
+            return four_oh_four(resp, "Hitting excluded hostnames")
+          # exclude takes priority over whitelist, so do exclude
+          # check afterwards
           if url.host.match(EXCLUDED_HOSTS)
             return four_oh_four(resp, "Hitting excluded hostnames")
 

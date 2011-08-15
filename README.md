@@ -1,4 +1,4 @@
-![camo](http://farm5.static.flickr.com/4116/4857328881_fefb8e2134_z.jpg)
+![teest image](http://awesometrousers.net/static/images/feed.svg)
 
 Camo is all about making insecure assets look secure.  This is an SSL image proxy to prevent mixed content warnings on secure pages served from [GitHub](https://github.com).
 

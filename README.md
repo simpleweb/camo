@@ -1,5 +1,7 @@
 ![teest image](http://awesometrousers.net/static/images/feed.svg)
 
+![teest image2](http://awesometrousers.net/favicon.ico)
+
 Camo is all about making insecure assets look secure.  This is an SSL image proxy to prevent mixed content warnings on secure pages served from [GitHub](https://github.com).
 
 We want to allow people to keep embedding images in comments/issues/READMEs/google charting.

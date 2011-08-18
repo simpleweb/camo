@@ -25,7 +25,7 @@ module CamoProxyTests
 
   def test_proxy_valid_svg_with_gzip_request
     response = RestClient.get(
-        request_uri('http://www.adobe.com/svg/demos/melting/Melting.svgz'),
+        request_uri('http://awesometrousers.net/static/images/feed.svg'),
         {'Accept-Encoding' => 'gzip,deflate'})
     assert_equal(200, response.code)
   end

@@ -147,17 +147,24 @@ proxyHandler = (req, resp) ->
       send404(resp, "Content-Length exceeded")
     else
       newHeaders =
-        'expires'                : srcResp.headers['expires']
         'content-type'           : srcResp.headers['content-type']
-        'cache-control'          : srcResp.headers['cache-control']
         'Camo-Host'              : camo_hostname
         'X-Content-Type-Options' : 'nosniff'
-      
+     
+      # only set these if upstream has them set
+      if srcResp.headers['cache-control']?
+        newHeaders['cache-control'] = srcResp.headers['cache-control']
+      if srcResp.headers['expires']?
+        newHeaders['expires'] = srcResp.headers['expires']
+
       # special case content-length. might not be sent by upstream server
       # if gzip encoded / chunked response
-      newHeaders['content-length'] = content_length if content_length?
-      newHeaders['transfer-encoding'] = srcResp.headers['transfer-encoding'] if srcResp.headers['transfer-encoding']?
-      newHeaders['content-encoding'] = srcResp.headers['content-encoding'] if srcResp.headers['content-encoding']?
+      if content_length?
+        newHeaders['content-length'] = content_length
+      if srcResp.headers['transfer-encoding']?
+        newHeaders['transfer-encoding'] = srcResp.headers['transfer-encoding']
+      if srcResp.headers['content-encoding']?
+        newHeaders['content-encoding'] = srcResp.headers['content-encoding']
 
       srcResp.on 'end', -> finish resp
       srcResp.on 'error', -> finish resp

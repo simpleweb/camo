@@ -87,6 +87,16 @@ proxyHandler = (req, resp) ->
     'x-forwarded-for'        : req.headers['x-forwarded-for']
     'x-content-type-options' : 'nosniff'
 
+  if req.headers['if-match']?
+    transferred_headers['if-match'] = req.headers['if-match']
+  if req.headers['if-none-match']?
+    transferred_headers['if-none-match'] = req.headers['if-none-match']
+
+  if req.headers['if-modified-since']?
+    transferred_headers['if-modified-since'] = req.headers['if-modified-since']
+  if req.headers['if-unmodified-since']?
+    transferred_headers['if-unmodified-since'] = req.headers['if-unmodified-since']
+
   delete(req.headers.cookie)
 
   [query_digest, encoded_url] = url.pathname.replace(/^\//, '').split("/", 2)
@@ -139,11 +149,12 @@ proxyHandler = (req, resp) ->
 
   srcReq = src.request 'GET', query_path, transferred_headers
 
+  console.log('here')
   srcReq.on 'response', (srcResp) ->
     log srcResp.headers
 
     content_length  = srcResp.headers['content-length']
-    if content_length > 5242880
+    if content_length? and content_length > 5242880
       send404(resp, "Content-Length exceeded")
     else
       newHeaders =
@@ -156,6 +167,10 @@ proxyHandler = (req, resp) ->
         newHeaders['cache-control'] = srcResp.headers['cache-control']
       if srcResp.headers['expires']?
         newHeaders['expires'] = srcResp.headers['expires']
+      if srcResp.headers['etag']?
+        newHeaders['etag'] = srcResp.headers['etag']
+      if srcResp.headers['last-modified']?
+        newHeaders['last-modified'] = srcResp.headers['last-modified']
 
       # special case content-length. might not be sent by upstream server
       # if gzip encoded / chunked response

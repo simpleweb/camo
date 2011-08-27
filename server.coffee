@@ -149,7 +149,6 @@ proxyHandler = (req, resp) ->
 
   srcReq = src.request 'GET', query_path, transferred_headers
 
-  console.log('here')
   srcReq.on 'response', (srcResp) ->
     log srcResp.headers
 

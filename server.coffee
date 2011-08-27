@@ -6,14 +6,14 @@ QueryString = require 'querystring'
 
 version         = "0.3.0"
 port            = parseInt process.env.PORT        || 8081
-excluded        = process.env.CAMO_HOST_EXCLUSIONS || '*.example.org'
+excluded        = process.env.CAMO_HOST_EXCLUSIONS || /^(?:.*\.)?example\.(?:com|org|net)$/
 allowed         = process.env.CAMO_HOST_WHITELIST  || ''
 shared_key      = process.env.CAMO_KEY             || '0x24FEEDFACEDEADBEEFCAFE'
 camo_hostname   = process.env.CAMO_HOSTNAME        || "unknown"
 logging_enabled = process.env.CAMO_LOGGING_ENABLED || "disabled"
 
-EXCLUDED_HOSTS  = new RegExp(excluded.replace(".", "\\.").replace("*", "\\.*"))
-ALLOWED_HOSTS   = new RegExp(allowed.replace(".", "\\.").replace("*", "\\.*"))
+EXCLUDED_HOSTS  = new RegExp(excluded)
+ALLOWED_HOSTS   = new RegExp(allowed)
 RESTRICTED_IPS  = /^((10\.)|(127\.)|(169\.254)|(192\.168)|(172\.((1[6-9])|(2[0-9])|(3[0-1]))))/
 
 total_connections   = 0
@@ -222,4 +222,6 @@ process.on 'uncaughtException', (error) ->
 ## start server
 console.log "SSL-Proxy running on #{port} with pid:#{process.pid}."
 console.log "Using the secret key #{shared_key}"
+console.log "Excluded Host RegExp: #{EXCLUDED_HOSTS}"
+console.log "Allowed Host RegExp: #{ALLOWED_HOSTS}"
 server.listen port

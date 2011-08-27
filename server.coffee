@@ -14,7 +14,7 @@ logging_enabled = process.env.CAMO_LOGGING_ENABLED || "disabled"
 
 EXCLUDED_HOSTS  = new RegExp(excluded)
 ALLOWED_HOSTS   = new RegExp(allowed)
-RESTRICTED_IPS  = /^((10\.)|(127\.)|(169\.254)|(192\.168)|(172\.((1[6-9])|(2[0-9])|(3[0-1]))))/
+RESTRICTED_IPS  = /^(?:(?:10\.)|(?:127\.)|(?:169\.254)|(?:192\.168)|(?:172\.(?:(?:1[6-9])|(?:2[0-9])|(?:3[0-1]))))/
 
 total_connections   = 0
 current_connections = 0

@@ -129,10 +129,10 @@ proxyHandler = (req, resp) ->
   if !dest_url.host? or dest_url.host.match(RESTRICTED_IPS)
     return send404(resp, "No host found #{dest_url.host}")
 
-  if ALLOWED_HOSTS != '' and !dest_url.host.match(ALLOWED_HOSTS)
+  if allowed != '' and !dest_url.host.match(ALLOWED_HOSTS)
     return send404(resp, "Not in whitelist")
 
-  if dest_url.host.match(EXCLUDED_HOSTS)
+  if excluded != '' and dest_url.host.match(EXCLUDED_HOSTS)
     return send404(resp, "Hitting excluded hostnames")
 
   src = Http.createClient dest_url.port || 80, dest_url.hostname

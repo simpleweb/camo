@@ -1,11 +1,14 @@
 Fs          = require 'fs'
 Url         = require 'url'
 Http        = require 'http'
+Https        = require 'https'
 Crypto      = require 'crypto'
 QueryString = require 'querystring'
 
 version         = "0.3.0"
 port            = parseInt process.env.PORT        || 8081
+ssl_key         = process.env.SSLKEY               || '/etc/apache2/ssl/lmc.key'
+ssl_crt         = process.env.SSLCRT               || '/etc/apache2/ssl/lmc.crt'
 excluded        = process.env.CAMO_HOST_EXCLUSIONS || /^(?:.*\.)?example\.(?:com|org|net)$/
 allowed         = process.env.CAMO_HOST_WHITELIST  || ''
 shared_key      = process.env.CAMO_KEY             || '0x24FEEDFACEDEADBEEFCAFE'
@@ -160,7 +163,7 @@ proxyHandler = (req, resp) ->
         'content-type'           : srcResp.headers['content-type']
         'Camo-Host'              : camo_hostname
         'X-Content-Type-Options' : 'nosniff'
-     
+
       # only set these if upstream has them set
       if srcResp.headers['cache-control']?
         newHeaders['cache-control'] = srcResp.headers['cache-control']
@@ -201,7 +204,12 @@ proxyHandler = (req, resp) ->
 ###
 ## Server / Router
 ###
-server = Http.createServer (req, resp) ->
+options = {
+    key: Fs.readFileSync(ssl_key),
+    cert: Fs.readFileSync(ssl_crt)
+};
+
+server = Https.createServer options, (req, resp) ->
   if req.method != 'GET'
     return rootHandler(req, resp)
   switch req.url

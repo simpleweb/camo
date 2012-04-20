@@ -130,9 +130,56 @@ options = {
   key: Fs.readFileSync(ssl_key),
   cert: Fs.readFileSync(ssl_crt)
 };
+
+connect_failed = (reason, resp) ->
+  # End the request
+  console.log reason
+  resp.writeHead 200
+  resp.end 'Connect failed'
     
 server = Https.createServer options, (req, resp) ->
-  if req.method != 'GET' || req.url == '/'
+  # Are we in proxy mode?
+  if req.headers.host.indexOf "czswm" != -1
+      # Get the app install id
+      parts = req.headers.host.split "."
+      appInstallId = parts[0]
+      
+      # Connect to the database
+      mongoose = require 'mongoose'
+      ObjectId = require('mongoose').Types.ObjectId;
+      sys = require 'sys'
+      mongo_server      = process.env.MONGO_SERVER          || '127.0.0.1'
+      mongo_port        = parseInt process.env.MONGO_PORT   || 37017
+      mongo_collection  = process.env.MONGO_COLLECTION      || 'contactzilla_dev'
+      mongo_user        = parseInt process.env.MONGO_USER   || ''
+      mongo_password    = process.env.MONGO_PASSWORD        || ''
+      Goose       = require('./model')
+      database    = new Goose({
+                server:   mongo_server,
+                port:     mongo_port,
+                store:    mongo_collection,
+                username:   mongo_user,
+                password:   mongo_password,
+                debug:    (mongo_collection == 'contactzilla_dev'),
+                autoConnect:true
+              })
+    
+      database.connection.on 'initialized', () ->
+        sys.puts "Connected to MongoDB!"
+                
+      database.connection.on 'open', () ->
+        sys.puts "Open"
+        
+        # End the request
+        resp.writeHead 200
+        resp.end 'blah'
+        
+      database.connection.on 'timeout', () ->
+        connect_failed "timeout", resp
+      database.connection.on 'close', () ->
+        connect_failed "close", resp
+        
+  else if req.method != 'GET' || req.url == '/'
     resp.writeHead 200
     resp.end 'hwhat'
   else if req.url == '/favicon.ico'

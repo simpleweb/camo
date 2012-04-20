@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 /server.js
-=======
 node_modules
 tmp/camouflage.pid
 tmp/camo.pid
->>>>>>> atmos/master

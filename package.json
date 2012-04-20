@@ -2,6 +2,9 @@
   "name": "camo",
   "version": "0.0.1",
   "dependencies": {
+    "colors"   :  "*",
+    "mongodb" : "0.9.x",
+    "mongoose" : "2.6.x"
   },
   "engines": {
     "node": ">=0.4.10 <0.5.0"

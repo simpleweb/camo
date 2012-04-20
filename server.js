@@ -1,5 +1,5 @@
 (function() {
-  var Crypto, EXCLUDED_HOSTS, Fs, Http, Https, QueryString, RESTRICTED_IPS, Url, camo_hostname, connect_failed, current_connections, excluded, finish, four_oh_four, hexdec, log, logging_enabled, max_redirects, options, port, process_url, server, shared_key, ssl_crt, ssl_key, started_at, total_connections, version;
+  var Crypto, EXCLUDED_HOSTS, Fs, Goose, Http, Https, ObjectId, QueryString, RESTRICTED_IPS, Url, camo_hostname, connect_failed, current_connections, database, excluded, finish, four_oh_four, hexdec, log, logging_enabled, max_redirects, mongo_collection, mongo_password, mongo_port, mongo_server, mongo_user, mongoose, options, port, process_url, server, shared_key, ssl_crt, ssl_key, started_at, sys, total_connections, version;
   Fs = require('fs');
   Url = require('url');
   Http = require('http');
@@ -139,50 +139,52 @@
     key: Fs.readFileSync(ssl_key),
     cert: Fs.readFileSync(ssl_crt)
   };
-  connect_failed = function(reason, resp) {
-    console.log(reason);
-    resp.writeHead(200);
-    return resp.end('Connect failed');
+  connect_failed = function(reason) {
+    return console.log(reason);
   };
+  mongoose = require('mongoose');
+  ObjectId = require('mongoose').Types.ObjectId;
+  sys = require('sys');
+  mongo_server = process.env.MONGO_SERVER || '127.0.0.1';
+  mongo_port = parseInt(process.env.MONGO_PORT || 37017);
+  mongo_collection = process.env.MONGO_COLLECTION || 'contactzilla_dev';
+  mongo_user = parseInt(process.env.MONGO_USER || '');
+  mongo_password = process.env.MONGO_PASSWORD || '';
+  Goose = require('./model');
+  database = new Goose({
+    server: mongo_server,
+    port: mongo_port,
+    store: mongo_collection,
+    username: mongo_user,
+    password: mongo_password,
+    debug: mongo_collection === 'contactzilla_dev',
+    autoConnect: true
+  });
+  database.connection.on('initialized', function() {
+    return sys.puts("Connected to MongoDB!");
+  });
+  database.connection.on('open', function() {
+    return sys.puts("Open");
+  });
+  database.connection.on('timeout', function() {
+    return connect_failed("timeout");
+  });
+  database.connection.on('close', function() {
+    return connect_failed("close");
+  });
   server = Https.createServer(options, function(req, resp) {
-    var Goose, ObjectId, appInstallId, database, dest_url, encoded_url, hmac, hmac_digest, mongo_collection, mongo_password, mongo_port, mongo_server, mongo_user, mongoose, parts, query_digest, sys, transferred_headers, url, url_type, _base, _ref;
+    var appInstallId, dest_url, encoded_url, hmac, hmac_digest, parts, query_digest, transferred_headers, url, url_type, _base, _ref;
     if (req.headers.host.indexOf("czswm" !== -1)) {
       parts = req.headers.host.split(".");
       appInstallId = parts[0];
-      mongoose = require('mongoose');
-      ObjectId = require('mongoose').Types.ObjectId;
-      sys = require('sys');
-      mongo_server = process.env.MONGO_SERVER || '127.0.0.1';
-      mongo_port = parseInt(process.env.MONGO_PORT || 37017);
-      mongo_collection = process.env.MONGO_COLLECTION || 'contactzilla_dev';
-      mongo_user = parseInt(process.env.MONGO_USER || '');
-      mongo_password = process.env.MONGO_PASSWORD || '';
-      Goose = require('./model');
-      database = new Goose({
-        server: mongo_server,
-        port: mongo_port,
-        store: mongo_collection,
-        username: mongo_user,
-        password: mongo_password,
-        debug: mongo_collection === 'contactzilla_dev',
-        autoConnect: true
-      });
-      database.connection.on('initialized', function() {
-        console.log("Initialized");
-        sys.puts("Connected to MongoDB!");
-        resp.writeHead(200);
-        return resp.end('blah');
-      });
-      database.connection.on('open', function() {
-        console.log("Open");
-        resp.writeHead(200);
-        return resp.end('blah');
-      });
-      database.connection.on('timeout', function() {
-        return connect_failed("timeout", resp);
-      });
-      return database.connection.on('close', function() {
-        return connect_failed("close", resp);
+      return database.data.applicationInstall.find({
+        '_id': new ObjectId(appInstallId)
+      }, function(err, apps) {
+        console.log(apps.length);
+        if (apps.length > 0) {} else {
+          resp.writeHead(200);
+          return resp.end('Get out!');
+        }
       });
     } else if (req.method !== 'GET' || req.url === '/') {
       resp.writeHead(200);

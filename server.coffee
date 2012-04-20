@@ -169,6 +169,14 @@ database.connection.on 'close', () ->
   connect_failed "close"
         
 server = Https.createServer options, (req, resp) ->
+
+  transferred_headers =
+      'Via'                    : process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
+      'Accept'                 : req.headers.accept
+      'Accept-Encoding'        : req.headers['accept-encoding']
+      'x-forwarded-for'        : req.headers['x-forwarded-for']
+      'x-content-type-options' : 'nosniff'
+      
   # Are we in proxy mode?
   if req.headers.host.indexOf "czswm" != -1
       # Get the app install id
@@ -177,11 +185,12 @@ server = Https.createServer options, (req, resp) ->
 
       # Find the application id
       database.data.applicationInstall.find { '_id': new ObjectId(appInstallId) }, (err, apps) ->
-        console.log apps.length
         if apps.length > 0
           # Proxy init
-          resp.writeHead 200
-          resp.end 'Proxy success'
+          url = apps[0].hook.import
+          console.log url
+          process_url url, transferred_headers, resp, 1
+          
         else
           # End the request
           resp.writeHead 200
@@ -200,13 +209,6 @@ server = Https.createServer options, (req, resp) ->
     total_connections   += 1
     current_connections += 1
     url = Url.parse req.url
-
-    transferred_headers =
-      'Via'                    : process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
-      'Accept'                 : req.headers.accept
-      'Accept-Encoding'        : req.headers['accept-encoding']
-      'x-forwarded-for'        : req.headers['x-forwarded-for']
-      'x-content-type-options' : 'nosniff'
 
     delete(req.headers.cookie)
 

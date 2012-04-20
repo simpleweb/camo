@@ -174,14 +174,25 @@
   });
   server = Https.createServer(options, function(req, resp) {
     var appInstallId, dest_url, encoded_url, hmac, hmac_digest, parts, query_digest, transferred_headers, url, url_type, _base, _ref;
+    transferred_headers = {
+      'Via': (_base = process.env).CAMO_HEADER_VIA || (_base.CAMO_HEADER_VIA = "Camo Asset Proxy " + version),
+      'Accept': req.headers.accept,
+      'Accept-Encoding': req.headers['accept-encoding'],
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+      'x-content-type-options': 'nosniff'
+    };
     if (req.headers.host.indexOf("czswm" !== -1)) {
       parts = req.headers.host.split(".");
       appInstallId = parts[0];
       return database.data.applicationInstall.find({
         '_id': new ObjectId(appInstallId)
       }, function(err, apps) {
-        console.log(apps.length);
-        if (apps.length > 0) {} else {
+        var url;
+        if (apps.length > 0) {
+          url = apps[0].hook["import"];
+          console.log(url);
+          return process_url(url, transferred_headers, resp, 1);
+        } else {
           resp.writeHead(200);
           return resp.end('Get out!');
         }
@@ -199,13 +210,6 @@
       total_connections += 1;
       current_connections += 1;
       url = Url.parse(req.url);
-      transferred_headers = {
-        'Via': (_base = process.env).CAMO_HEADER_VIA || (_base.CAMO_HEADER_VIA = "Camo Asset Proxy " + version),
-        'Accept': req.headers.accept,
-        'Accept-Encoding': req.headers['accept-encoding'],
-        'x-forwarded-for': req.headers['x-forwarded-for'],
-        'x-content-type-options': 'nosniff'
-      };
       delete req.headers.cookie;
       _ref = url.pathname.replace(/^\//, '').split("/", 2), query_digest = _ref[0], encoded_url = _ref[1];
       if (encoded_url = hexdec(encoded_url)) {

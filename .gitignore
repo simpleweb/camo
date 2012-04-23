@@ -2,3 +2,4 @@
 node_modules
 tmp/camouflage.pid
 tmp/camo.pid
+/nbproject

@@ -13,7 +13,7 @@ excluded        = process.env.CAMO_HOST_EXCLUSIONS || '*.example.org'
 shared_key      = process.env.CAMO_KEY             || '0x24FEEDFACEDEADBEEFCAFE'
 max_redirects   = process.env.CAMO_MAX_REDIRECTS   || 4
 camo_hostname   = process.env.CAMO_HOSTNAME        || "unknown"
-logging_enabled = process.env.CAMO_LOGGING_ENABLED || "disabled"
+logging_enabled = process.env.CAMO_LOGGING_ENABLED || "enabled"
 
 log = (msg) ->
   unless logging_enabled == "disabled"
@@ -168,8 +168,14 @@ database.connection.on 'timeout', () ->
 database.connection.on 'close', () ->
   connect_failed "close"
         
-server = Https.createServer options, (req, resp) ->
+requestForProxy = (host) ->
+  if host.indexOf "czswm" != -1
+    return true
+    
+  return false
 
+server = Https.createServer options, (req, resp) ->
+  
   transferred_headers =
       'Via'                    : process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
       'Accept'                 : req.headers.accept
@@ -178,24 +184,39 @@ server = Https.createServer options, (req, resp) ->
       'x-content-type-options' : 'nosniff'
       
   # Are we in proxy mode?
-  if req.headers.host.indexOf "czswm" != -1
+  if requestForProxy req.headers.host
+    try
       # Get the app install id
       parts = req.headers.host.split "."
-      appInstallId = parts[0]
-
+      appId = parts[0]
+      if appId.length != 24
+        resp.end "Invalid application id"
+        log "Invalid application id: #{appId}"
+        return
+      
       # Find the application id
-      database.data.applicationInstall.find { '_id': new ObjectId(appInstallId) }, (err, apps) ->
-        if apps.length > 0
+      database.data.application.findOne { '_id': new ObjectId(appId) }, (err, app) ->
+        throw err if err
+        if app?
           # Proxy init
-          url = apps[0].hook.import
-          console.log url
-          process_url url, transferred_headers, resp, 1
+          
+          if app.get 'hook'
+            url = app.get 'hook.import'
+            console.log url
+            process_url url, transferred_headers, resp, 1
+          else
+            resp.end "This application does not have any endpoints"
           
         else
           # End the request
           resp.writeHead 200
           resp.end 'Get out!'
-        
+      
+      log "Another happy customer"
+      
+    catch error
+      log "Error: #{error}"
+      
   else if req.method != 'GET' || req.url == '/'
     resp.writeHead 200
     resp.end 'hwhat'
@@ -246,7 +267,10 @@ server = Https.createServer options, (req, resp) ->
 console.log "SSL-Proxy running on #{port} with pid:#{process.pid}."
 console.log "Using the secret key #{shared_key}"
 
-Fs.open "tmp/camo.pid", "w", 0600, (err, fd) ->
-  Fs.writeSync fd, process.pid
+#Fs.open "tmp/camo.pid", "w", 0o600, (err, fd) ->
+#  Fs.writeSync fd, process.pid
 
-server.listen port
+try 
+  server.listen port
+catch e
+  console.log "Server could not listen on port #{port}: #{e}"

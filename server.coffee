@@ -87,8 +87,8 @@ process_url = (url, transferred_headers, resp, remaining_redirects) ->
             finish resp
         switch srcResp.statusCode
           when 200
-            if newHeaders['content-type'] && newHeaders['content-type'].slice(0, 5) != 'image'
-              four_oh_four(resp, "Non-Image content-type returned")
+            #if newHeaders['content-type'] && newHeaders['content-type'].slice(0, 5) != 'image'
+            #  four_oh_four(resp, "Non-Image content-type returned")
 
             log newHeaders
 
@@ -202,7 +202,7 @@ server = Https.createServer options, (req, resp) ->
             proxyUrl = Url.parse req.url
             
             assetUrl = app.get 'assetUrl'
-            assetUrl = assetUrl.replace(/^\/$/,"") + proxyUrl.pathname
+            assetUrl = assetUrl.replace(/\/$/,"") + proxyUrl.pathname
             
             total_connections   += 1
             current_connections += 1

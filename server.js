@@ -112,9 +112,6 @@
           });
           switch (srcResp.statusCode) {
             case 200:
-              if (newHeaders['content-type'] && newHeaders['content-type'].slice(0, 5) !== 'image') {
-                four_oh_four(resp, "Non-Image content-type returned");
-              }
               log(newHeaders);
               resp.writeHead(srcResp.statusCode, newHeaders);
               return srcResp.on('data', function(chunk) {
@@ -248,7 +245,7 @@
             if (app.get('assetUrl')) {
               proxyUrl = Url.parse(req.url);
               assetUrl = app.get('assetUrl');
-              assetUrl = assetUrl.replace(/^\/$/, "") + proxyUrl.pathname;
+              assetUrl = assetUrl.replace(/\/$/, "") + proxyUrl.pathname;
               total_connections += 1;
               current_connections += 1;
               url = Url.parse(assetUrl);

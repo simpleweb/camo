@@ -203,16 +203,12 @@
     return sys.puts("Connected to MongoDB!");
   });
 
-  database.connection.on('open', function() {
-    return sys.puts("Open");
-  });
-
   database.connection.on('timeout', function() {
-    return connect_failed("timeout");
+    return connect_failed("Connecting to mongo timed out");
   });
 
   database.connection.on('close', function() {
-    return connect_failed("close");
+    return connect_failed("Database connection closed");
   });
 
   requestForProxy = function(host) {
@@ -241,20 +237,21 @@
           log("Invalid application id: " + appId);
           return;
         }
-        database.data.application.findOne({
+        return database.data.application.findOne({
           '_id': new ObjectId(appId)
         }, function(err, app) {
-          var dest_url, encoded_url, query_digest, url, url_type, _ref;
+          var assetUrl, dest_url, encoded_url, proxyUrl, query_digest, url, url_type, _ref;
           if (err) {
             throw err;
           }
           if (app != null) {
-            if (app.get('hook.assetUrl')) {
-              url = app.get('hook.assetUrl');
-              req.dest = url;
+            if (app.get('assetUrl')) {
+              proxyUrl = Url.parse(req.url);
+              assetUrl = app.get('assetUrl');
+              assetUrl = assetUrl.replace(/^\/$/, "") + proxyUrl.pathname;
               total_connections += 1;
               current_connections += 1;
-              url = Url.parse(url);
+              url = Url.parse(assetUrl);
               delete req.headers.cookie;
               _ref = url.pathname.replace(/^\//, '').split("/", 2), query_digest = _ref[0], encoded_url = _ref[1];
               if (encoded_url = hexdec(encoded_url)) {
@@ -264,20 +261,25 @@
                 url_type = 'query';
                 dest_url = QueryString.parse(url.query).url;
               }
+              if (!dest_url) {
+                dest_url = '/';
+              }
               if ((url.pathname != null) && dest_url) {
+                log(url);
                 return process_url(url, transferred_headers, resp, max_redirects);
               } else {
-                return four_oh_four(resp, "No pathname provided on the server");
+                four_oh_four(resp, "No pathname provided on the server");
+                return log(dest_url);
               }
             } else {
-              return resp.end("This application does not have an asset url configured.");
+              resp.end("This application does not have an asset url configured.");
+              return log(app);
             }
           } else {
             resp.writeHead(200);
             return resp.end('Get out!');
           }
         });
-        return log("Another happy customer");
       } catch (error) {
         return log("Error: " + error);
       }

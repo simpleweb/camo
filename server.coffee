@@ -197,15 +197,16 @@ server = Https.createServer options, (req, resp) ->
         if app?
           # Proxy init
           
-          if app.get 'hook.assetUrl'
+          if app.get 'assetUrl'
+          
+            proxyUrl = Url.parse req.url
             
-            url = app.get 'hook.assetUrl'
-            
-            req.dest = url
+            assetUrl = app.get 'assetUrl'
+            assetUrl = assetUrl.replace(/^\/$/,"") + proxyUrl.pathname
             
             total_connections   += 1
             current_connections += 1
-            url = Url.parse url
+            url = Url.parse assetUrl
             
             delete(req.headers.cookie)
 
@@ -217,15 +218,21 @@ server = Https.createServer options, (req, resp) ->
               url_type = 'query'
               dest_url = QueryString.parse(url.query).url
 
+            if not dest_url
+              dest_url = '/'
+              
             if url.pathname? && dest_url
               # Heads up! ContactZilla does not use an encrypted digest, it should be ok for assets, but not for other content
+              log url
               process_url url, transferred_headers, resp, max_redirects
               
             else
               four_oh_four(resp, "No pathname provided on the server")
+              log dest_url
             
           else
             resp.end "This application does not have an asset url configured."
+            log app
           
         else
           # End the request

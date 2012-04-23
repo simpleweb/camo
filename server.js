@@ -243,7 +243,7 @@
         database.data.application.findOne({
           '_id': new ObjectId(appId)
         }, function(err, app) {
-          var url;
+          var dest_url, encoded_url, hmac, hmac_digest, query_digest, url, url_type, _ref;
           if (err) {
             throw err;
           }
@@ -251,7 +251,39 @@
             if (app.get('hook')) {
               url = app.get('hook.import');
               console.log(url);
-              return process_url(url, transferred_headers, resp, 1);
+              total_connections += 1;
+              current_connections += 1;
+              url = Url.parse(app.get('hook.import'));
+              console.log(url);
+              delete req.headers.cookie;
+              _ref = url.pathname.replace(/^\//, '').split("/", 2), query_digest = _ref[0], encoded_url = _ref[1];
+              if (encoded_url = hexdec(encoded_url)) {
+                url_type = 'path';
+                dest_url = encoded_url;
+              } else {
+                url_type = 'query';
+                dest_url = QueryString.parse(url.query).url;
+              }
+              log({
+                type: url_type,
+                url: req.url,
+                headers: req.headers,
+                dest: dest_url,
+                digest: query_digest
+              });
+              if ((url.pathname != null) && dest_url) {
+                hmac = Crypto.createHmac("sha1", shared_key);
+                hmac.update(dest_url);
+                hmac_digest = hmac.digest('hex');
+                if (hmac_digest === query_digest) {
+                  url = Url.parse(dest_url);
+                  return process_url(url, transferred_headers, resp, max_redirects);
+                } else {
+                  return four_oh_four(resp, "checksum mismatch " + hmac_digest + ":" + query_digest);
+                }
+              } else {
+                return four_oh_four(resp, "No pathname provided on the server");
+              }
             } else {
               return resp.end("This application does not have any endpoints");
             }

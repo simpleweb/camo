@@ -169,7 +169,7 @@ database.connection.on 'close', () ->
   connect_failed "close"
         
 requestForProxy = (host) ->
-  if host.indexOf "czswm" != -1
+  if host.indexOf "sslproxy" != -1
     return true
     
   return false
@@ -203,7 +203,53 @@ server = Https.createServer options, (req, resp) ->
           if app.get 'hook'
             url = app.get 'hook.import'
             console.log url
-            process_url url, transferred_headers, resp, 1
+            
+            
+            
+            
+            
+            total_connections   += 1
+            current_connections += 1
+            url = Url.parse app.get 'hook.import'
+            console.log url
+            
+            delete(req.headers.cookie)
+
+            [query_digest, encoded_url] = url.pathname.replace(/^\//, '').split("/", 2)
+            if encoded_url = hexdec(encoded_url)
+              url_type = 'path'
+              dest_url = encoded_url
+            else
+              url_type = 'query'
+              dest_url = QueryString.parse(url.query).url
+
+            log({
+              type:     url_type
+              url:      req.url
+              headers:  req.headers
+              dest:     dest_url
+              digest:   query_digest
+            })
+
+            if url.pathname? && dest_url
+              hmac = Crypto.createHmac("sha1", shared_key)
+              hmac.update(dest_url)
+
+              hmac_digest = hmac.digest('hex')
+
+              if hmac_digest == query_digest
+                url = Url.parse dest_url
+
+                process_url url, transferred_headers, resp, max_redirects
+              else
+                four_oh_four(resp, "checksum mismatch #{hmac_digest}:#{query_digest}")
+            else
+              four_oh_four(resp, "No pathname provided on the server")
+            
+            
+            
+            
+            
           else
             resp.end "This application does not have any endpoints"
           

@@ -216,10 +216,11 @@
   });
 
   requestForProxy = function(host) {
-    if (host.indexOf("czswm" !== -1)) {
+    if ((host.indexOf("sslproxy")) !== -1) {
       return true;
+    } else {
+      return false;
     }
-    return false;
   };
 
   server = Https.createServer(options, function(req, resp) {
@@ -243,18 +244,17 @@
         database.data.application.findOne({
           '_id': new ObjectId(appId)
         }, function(err, app) {
-          var dest_url, encoded_url, hmac, hmac_digest, query_digest, url, url_type, _ref;
+          var dest_url, encoded_url, query_digest, url, url_type, _ref;
           if (err) {
             throw err;
           }
           if (app != null) {
-            if (app.get('hook')) {
-              url = app.get('hook.import');
-              console.log(url);
+            if (app.get('hook.assetUrl')) {
+              url = app.get('hook.assetUrl');
+              req.dest = url;
               total_connections += 1;
               current_connections += 1;
-              url = Url.parse(app.get('hook.import'));
-              console.log(url);
+              url = Url.parse(url);
               delete req.headers.cookie;
               _ref = url.pathname.replace(/^\//, '').split("/", 2), query_digest = _ref[0], encoded_url = _ref[1];
               if (encoded_url = hexdec(encoded_url)) {
@@ -264,28 +264,13 @@
                 url_type = 'query';
                 dest_url = QueryString.parse(url.query).url;
               }
-              log({
-                type: url_type,
-                url: req.url,
-                headers: req.headers,
-                dest: dest_url,
-                digest: query_digest
-              });
               if ((url.pathname != null) && dest_url) {
-                hmac = Crypto.createHmac("sha1", shared_key);
-                hmac.update(dest_url);
-                hmac_digest = hmac.digest('hex');
-                if (hmac_digest === query_digest) {
-                  url = Url.parse(dest_url);
-                  return process_url(url, transferred_headers, resp, max_redirects);
-                } else {
-                  return four_oh_four(resp, "checksum mismatch " + hmac_digest + ":" + query_digest);
-                }
+                return process_url(url, transferred_headers, resp, max_redirects);
               } else {
                 return four_oh_four(resp, "No pathname provided on the server");
               }
             } else {
-              return resp.end("This application does not have any endpoints");
+              return resp.end("This application does not have an asset url configured.");
             }
           } else {
             resp.writeHead(200);

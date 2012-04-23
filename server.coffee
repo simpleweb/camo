@@ -159,20 +159,17 @@ database    = new Goose({
 database.connection.on 'initialized', () ->
   sys.puts "Connected to MongoDB!"
         
-database.connection.on 'open', () ->
-  sys.puts "Open"
-
 database.connection.on 'timeout', () ->
-  connect_failed "timeout"
+  connect_failed "Connecting to mongo timed out"
   
 database.connection.on 'close', () ->
-  connect_failed "close"
+  connect_failed "Database connection closed"
         
 requestForProxy = (host) ->
-  if host.indexOf "sslproxy" != -1
+  if (host.indexOf "sslproxy") != -1
     return true
-    
-  return false
+  else  
+    return false
 
 server = Https.createServer options, (req, resp) ->
   
@@ -200,18 +197,15 @@ server = Https.createServer options, (req, resp) ->
         if app?
           # Proxy init
           
-          if app.get 'hook'
-            url = app.get 'hook.import'
-            console.log url
+          if app.get 'hook.assetUrl'
             
+            url = app.get 'hook.assetUrl'
             
-            
-            
+            req.dest = url
             
             total_connections   += 1
             current_connections += 1
-            url = Url.parse app.get 'hook.import'
-            console.log url
+            url = Url.parse url
             
             delete(req.headers.cookie)
 
@@ -223,42 +217,20 @@ server = Https.createServer options, (req, resp) ->
               url_type = 'query'
               dest_url = QueryString.parse(url.query).url
 
-            log({
-              type:     url_type
-              url:      req.url
-              headers:  req.headers
-              dest:     dest_url
-              digest:   query_digest
-            })
-
             if url.pathname? && dest_url
-              hmac = Crypto.createHmac("sha1", shared_key)
-              hmac.update(dest_url)
-
-              hmac_digest = hmac.digest('hex')
-
-              if hmac_digest == query_digest
-                url = Url.parse dest_url
-
-                process_url url, transferred_headers, resp, max_redirects
-              else
-                four_oh_four(resp, "checksum mismatch #{hmac_digest}:#{query_digest}")
+              # Heads up! ContactZilla does not use an encrypted digest, it should be ok for assets, but not for other content
+              process_url url, transferred_headers, resp, max_redirects
+              
             else
               four_oh_four(resp, "No pathname provided on the server")
             
-            
-            
-            
-            
           else
-            resp.end "This application does not have any endpoints"
+            resp.end "This application does not have an asset url configured."
           
         else
           # End the request
           resp.writeHead 200
           resp.end 'Get out!'
-      
-      log "Another happy customer"
       
     catch error
       log "Error: #{error}"
@@ -276,7 +248,7 @@ server = Https.createServer options, (req, resp) ->
     total_connections   += 1
     current_connections += 1
     url = Url.parse req.url
-
+    
     delete(req.headers.cookie)
 
     [query_digest, encoded_url] = url.pathname.replace(/^\//, '').split("/", 2)

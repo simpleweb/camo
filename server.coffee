@@ -73,6 +73,7 @@ process_url = (url, transferred_headers, resp, remaining_redirects) ->
           'content-type'           : srcResp.headers['content-type']
           'cache-control'          : srcResp.headers['cache-control']
           'content-length'         : content_length
+          'Connection'             : 'close'
           'Camo-Host'              : camo_hostname
           'X-Content-Type-Options' : 'nosniff'
 
@@ -90,7 +91,7 @@ process_url = (url, transferred_headers, resp, remaining_redirects) ->
             #if newHeaders['content-type'] && newHeaders['content-type'].slice(0, 5) != 'image'
             #  four_oh_four(resp, "Non-Image content-type returned")
 
-            log newHeaders
+            #log newHeaders
 
             resp.writeHead srcResp.statusCode, newHeaders
             srcResp.on 'data', (chunk) ->
@@ -187,7 +188,7 @@ server = Https.createServer options, (req, resp) ->
       parts = req.headers.host.split "."
       appId = parts[0]
       if appId.length != 24
-        resp.end "Invalid application id"
+        four_oh_four(resp, "Invalid application id") 
         log "Invalid application id: #{appId}"
         return
       
@@ -231,7 +232,7 @@ server = Https.createServer options, (req, resp) ->
               log dest_url
             
           else
-            resp.end "This application does not have an asset url configured."
+            four_oh_four(resp, "This application does not have an asset url configured.")
             log app
           
         else

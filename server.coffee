@@ -182,6 +182,7 @@ server = Https.createServer options, (req, resp) ->
       'x-content-type-options' : 'nosniff'
       
   # Are we in proxy mode?
+  console.log req.headers.host
   if requestForProxy req.headers.host
     try
       # Get the app install id

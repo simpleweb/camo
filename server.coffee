@@ -142,7 +142,7 @@ mongoose = require 'mongoose'
 ObjectId = require('mongoose').Types.ObjectId;
 sys = require 'sys'
 mongo_server      = process.env.MONGO_SERVER          || '127.0.0.1'
-mongo_port        = parseInt process.env.MONGO_PORT   || 37017
+mongo_port        = parseInt process.env.MONGO_PORT   || 27017
 mongo_collection  = process.env.MONGO_COLLECTION      || 'contactzilla_dev'
 mongo_user        = parseInt process.env.MONGO_USER   || ''
 mongo_password    = process.env.MONGO_PASSWORD        || ''
@@ -265,10 +265,6 @@ server = Https.createServer options, (req, resp) ->
       return
       
     #Grab out contact.
-    console.log database
-    console.log database.data
-    console.log database.data.contact
-    
     database.data.contact.findOne { '_id': new ObjectId(contact_id) }, (err, contact) ->
       
       if contact?

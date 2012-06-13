@@ -5,7 +5,7 @@ Https        = require 'https'
 Crypto      = require 'crypto'
 QueryString = require 'querystring'
 
-port            = parseInt process.env.PORT        || 8082
+port            = parseInt process.env.PORT        || 8081
 version         = "0.5.0"
 ssl_key         = process.env.SSLKEY               || '/etc/apache2/ssl/lmc.key'
 ssl_crt         = process.env.SSLCRT               || '/etc/apache2/ssl/lmc.crt'

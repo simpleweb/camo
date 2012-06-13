@@ -5,7 +5,7 @@ Https        = require 'https'
 Crypto      = require 'crypto'
 QueryString = require 'querystring'
 
-port            = parseInt process.env.PORT        || 8081
+port            = parseInt process.env.PORT        || 8082
 version         = "0.5.0"
 ssl_key         = process.env.SSLKEY               || '/etc/apache2/ssl/lmc.key'
 ssl_crt         = process.env.SSLCRT               || '/etc/apache2/ssl/lmc.crt'
@@ -167,11 +167,19 @@ database.connection.on 'close', () ->
   connect_failed "Database connection closed"
         
 requestForProxy = (host) ->
-  return false
-  if (host.indexOf "sslproxy") != -1
+  
+  if (host.indexOf "assetproxy") != -1
     return true
   else  
     return false
+    
+requestForProfileImg = (host) ->
+
+  if (host.indexOf "profileimg") != -1
+    return true
+  else  
+    return false    
+
 
 server = Https.createServer options, (req, resp) ->
   
@@ -183,7 +191,6 @@ server = Https.createServer options, (req, resp) ->
       'x-content-type-options' : 'nosniff'
       
   # Are we in proxy mode?
-  console.log req.headers.host
   if requestForProxy req.headers.host
     try
       # Get the app install id
@@ -245,6 +252,39 @@ server = Https.createServer options, (req, resp) ->
     catch error
       log "Error: #{error}"
       
+  else if requestForProfileImg req.headers.host
+    url = Url.parse req.url
+    [contact_id] = url.pathname.replace(/^\//, '').split("/", 1)
+    
+    if contact_id.length != 24
+      four_oh_four(resp, "Invalid contact id") 
+      log "Invalid contact id: #{appId}"
+      return
+      
+    #Grab out contact.
+    database.data.contact.findOne { '_id': new ObjectId(contact_id) }, (err, contact) ->
+      
+      if contact?
+        
+        profileImgUrl = false
+        
+        if contact.poco.photos?
+          contact.poco.photos.forEach (photo, index, array) ->
+            profileImgUrl = photo.value
+            return
+        
+        if profileImgUrl 
+          profileImgUrl = Url.parse profileImgUrl
+          process_url profileImgUrl, transferred_headers, resp, max_redirects
+        else
+          defaultImg = Fs.readFileSync './default_profile.png';
+          resp.writeHead(200, {'Content-Type': 'image/png' });
+          resp.end(defaultImg, 'binary');
+               
+      else
+        four_oh_four(resp, "Couldn't find contact") 
+        resp.end 'Get out!'
+    
   else if req.method != 'GET' || req.url == '/'
     resp.writeHead 200
     resp.end 'hwhat'

@@ -14,6 +14,7 @@ shared_key      = process.env.CAMO_KEY             || '0x24FEEDFACEDEADBEEFCAFE'
 max_redirects   = process.env.CAMO_MAX_REDIRECTS   || 4
 camo_hostname   = process.env.CAMO_HOSTNAME        || "unknown"
 logging_enabled = process.env.CAMO_LOGGING_ENABLED || "enabled"
+default_profile_img = process.env.DEFAULT_PROFILE_IMG || "/data/sslproxy/default_profile.png"
 
 log = (msg) ->
   unless logging_enabled == "disabled"
@@ -280,7 +281,7 @@ server = Https.createServer options, (req, resp) ->
           profileImgUrl = Url.parse profileImgUrl
           process_url profileImgUrl, transferred_headers, resp, max_redirects
         else
-          defaultImg = Fs.readFileSync './default_profile.png';
+          defaultImg = Fs.readFileSync default_profile_img;
           resp.writeHead(200, {'Content-Type': 'image/png' });
           resp.end(defaultImg, 'binary');
                

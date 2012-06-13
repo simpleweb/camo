@@ -166,16 +166,16 @@ database.connection.on 'timeout', () ->
 database.connection.on 'close', () ->
   connect_failed "Database connection closed"
         
-requestForProxy = (host) ->
+requestForProxy = (path) ->
   
-  if (host.indexOf "assetproxy") != -1
+  if (path.indexOf "/assetproxy") == 0
     return true
   else  
     return false
     
-requestForProfileImg = (host) ->
+requestForProfileImg = (path) ->
 
-  if (host.indexOf "profileimg") != -1
+  if (path.indexOf "/profileimg") == 0
     return true
   else  
     return false    
@@ -190,8 +190,11 @@ server = Https.createServer options, (req, resp) ->
       'x-forwarded-for'        : req.headers['x-forwarded-for']
       'x-content-type-options' : 'nosniff'
       
+  url = Url.parse req.url
+  
   # Are we in proxy mode?
-  if requestForProxy req.headers.host
+  if requestForProxy url.pathname
+    
     try
       # Get the app install id
       parts = req.headers.host.split "."
@@ -252,9 +255,9 @@ server = Https.createServer options, (req, resp) ->
     catch error
       log "Error: #{error}"
       
-  else if requestForProfileImg req.headers.host
-    url = Url.parse req.url
-    [contact_id] = url.pathname.replace(/^\//, '').split("/", 1)
+  else if requestForProfileImg url.pathname
+    
+    [ignore, contact_id] = url.pathname.replace(/^\//, '').split("/", 2)
     
     if contact_id.length != 24
       four_oh_four(resp, "Invalid contact id") 
@@ -297,7 +300,6 @@ server = Https.createServer options, (req, resp) ->
   else
     total_connections   += 1
     current_connections += 1
-    url = Url.parse req.url
     
     delete(req.headers.cookie)
 

@@ -167,6 +167,7 @@ database.connection.on 'close', () ->
   connect_failed "Database connection closed"
         
 requestForProxy = (host) ->
+  return false
   if (host.indexOf "sslproxy") != -1
     return true
   else  

@@ -265,6 +265,10 @@ server = Https.createServer options, (req, resp) ->
       return
       
     #Grab out contact.
+    console.log database
+    console.log database.data
+    console.log database.data.contact
+    
     database.data.contact.findOne { '_id': new ObjectId(contact_id) }, (err, contact) ->
       
       if contact?

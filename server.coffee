@@ -34,6 +34,11 @@ four_oh_four = (resp, msg) ->
   resp.writeHead 404
   finish resp, "Not Found"
 
+output_default_avatar = (resp) ->
+  defaultImg = Fs.readFileSync default_profile_img;
+  resp.writeHead(200, {'Content-Type': 'image/png' });
+  resp.end(defaultImg, 'binary');
+  
 finish = (resp, str) ->
   current_connections -= 1
   current_connections  = 0 if current_connections < 1
@@ -281,13 +286,10 @@ server = Https.createServer options, (req, resp) ->
           profileImgUrl = Url.parse profileImgUrl
           process_url profileImgUrl, transferred_headers, resp, max_redirects
         else
-          defaultImg = Fs.readFileSync default_profile_img;
-          resp.writeHead(200, {'Content-Type': 'image/png' });
-          resp.end(defaultImg, 'binary');
+          output_default_avatar resp
                
       else
-        four_oh_four(resp, "Couldn't find contact") 
-        resp.end 'Get out!'
+        output_default_avatar resp
     
   else if req.method != 'GET' || req.url == '/'
     resp.writeHead 200

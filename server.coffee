@@ -173,7 +173,7 @@ database.connection.on 'close', () ->
   connect_failed "Database connection closed"
         
 requestForProxy = (path) ->
-  
+
   if (path.indexOf "/assetproxy") == 0
     return true
   else  
@@ -201,15 +201,15 @@ server = Https.createServer options, (req, resp) ->
   # Are we in proxy mode?
   if requestForProxy url.pathname
     
+    [ignore, appId] = url.pathname.replace(/^\//, '').split("/", 2)
+    
+    if not appId? or appId.length is not 24
+      four_oh_four(resp, "Invalid application id") 
+      log "Invalid application id: #{appId}"
+      return
+
     try
-      # Get the app install id
-      parts = req.headers.host.split "."
-      appId = parts[0]
-      if appId.length != 24
-        four_oh_four(resp, "Invalid application id") 
-        log "Invalid application id: #{appId}"
-        return
-      
+
       # Find the application id
       database.data.application.findOne { '_id': new ObjectId(appId) }, (err, app) ->
         throw err if err
@@ -221,8 +221,11 @@ server = Https.createServer options, (req, resp) ->
             proxyUrl = Url.parse req.url
             
             assetUrl = app.get 'assetUrl'
-            assetUrl = assetUrl.replace(/\/$/,"") + proxyUrl.pathname
-            
+
+            #Strip the beginning part of the url path with the assetproxy and id.
+            assetProxyPathRegEx = "/assetproxy/" + appId
+            assetUrl = assetUrl.replace(/\/$/,"") + proxyUrl.pathname.replace(new RegExp(assetProxyPathRegEx, "g"), "")
+
             total_connections   += 1
             current_connections += 1
             url = Url.parse assetUrl
@@ -230,6 +233,7 @@ server = Https.createServer options, (req, resp) ->
             delete(req.headers.cookie)
 
             [query_digest, encoded_url] = url.pathname.replace(/^\//, '').split("/", 2)
+
             if encoded_url = hexdec(encoded_url)
               url_type = 'path'
               dest_url = encoded_url
@@ -254,9 +258,7 @@ server = Https.createServer options, (req, resp) ->
             log app
           
         else
-          # End the request
-          resp.writeHead 200
-          resp.end 'Get out!'
+          four_oh_four(resp, "Couldn't find requested asset.")
       
     catch error
       log "Error: #{error}"
@@ -265,7 +267,7 @@ server = Https.createServer options, (req, resp) ->
     
     [ignore, contact_id] = url.pathname.replace(/^\//, '').split("/", 2)
     
-    if contact_id.length != 24
+    if contact_id? and contact_id.length != 24
       four_oh_four(resp, "Invalid contact id") 
       log "Invalid contact id: #{appId}"
       return

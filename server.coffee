@@ -146,7 +146,7 @@ connect_failed = (reason) ->
 # Connect to the database
 mongoose = require 'mongoose'
 ObjectId = require('mongoose').Types.ObjectId;
-sys = require 'sys'
+sys = require 'util'
 mongo_server      = process.env.MONGO_SERVER          || '127.0.0.1'
 mongo_port        = parseInt process.env.MONGO_PORT   || 27017
 mongo_collection  = process.env.MONGO_COLLECTION      || 'contactzilla_dev'

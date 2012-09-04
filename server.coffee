@@ -211,7 +211,7 @@ server = Https.createServer options, (req, resp) ->
     try
 
       # Find the application id
-      database.data.application.findOne { '_id': new ObjectId(appId) }, (err, app) ->
+      database.data.application.findOne({ '_id': new ObjectId(appId) }).slaveOk().run (err, app) ->
         throw err if err
         if app?
           # Proxy init
@@ -273,7 +273,7 @@ server = Https.createServer options, (req, resp) ->
       return
       
     #Grab out contact.
-    database.data.contact.findOne { '_id': new ObjectId(contact_id) }, (err, contact) ->
+    database.data.contact.findOne({ '_id': new ObjectId(contact_id) }).slaveOk().run (err, contact) ->
       
       if contact?
         

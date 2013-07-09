@@ -36,15 +36,23 @@ four_oh_four = (resp, msg) ->
 
 output_default_avatar = (resp) ->
   defaultImg = Fs.readFileSync default_profile_img;
-  resp.writeHead(200, {'Content-Type': 'image/png' });
-  resp.end(defaultImg, 'binary');
-  
+  resp.writeHead(200, {'Content-Type': 'image/png' })
+  resp.end(defaultImg, 'binary')
+
+redirect = (resp, url) ->
+  resp.writeHead(301, {'Location': url })
+  resp.end()
+
 finish = (resp, str) ->
   current_connections -= 1
   current_connections  = 0 if current_connections < 1
   resp.connection && resp.end str
 
 process_url = (url, transferred_headers, resp, remaining_redirects) ->
+
+  if url.protocol? and url.protocol is 'https:'
+    return redirect(resp, url.href)
+
   if url.host? && !url.host.match(RESTRICTED_IPS)
     if url.host.match(EXCLUDED_HOSTS)
       return four_oh_four(resp, "Hitting excluded hostnames")
@@ -149,7 +157,7 @@ ObjectId = require('mongoose').Types.ObjectId;
 sys = require 'util'
 mongo_server      = process.env.MONGO_SERVER          || '127.0.0.1'
 mongo_port        = parseInt process.env.MONGO_PORT   || 27017
-mongo_collection  = process.env.MONGO_COLLECTION      || 'contactzilla_dev'
+mongo_collection  = process.env.MONGO_COLLECTION      || 'contactzilla'
 mongo_user        = parseInt process.env.MONGO_USER   || ''
 mongo_password    = process.env.MONGO_PASSWORD        || ''
 Goose       = require('./model')
@@ -159,7 +167,7 @@ database    = new Goose({
         store:    mongo_collection,
         username:   mongo_user,
         password:   mongo_password,
-        debug:    (mongo_collection == 'contactzilla_dev'),
+        debug:    (mongo_collection == 'contactzilla'),
         autoConnect:true
       })
 
@@ -276,16 +284,17 @@ server = Https.createServer options, (req, resp) ->
     database.data.contact.findOne({ '_id': new ObjectId(contact_id) }).slaveOk().run (err, contact) ->
       
       if contact?
-        
+
         profileImgUrl = false
         
         if contact.poco.photos?
           contact.poco.photos.forEach (photo, index, array) ->
             profileImgUrl = photo.value
             return
-        
+
         if profileImgUrl 
           profileImgUrl = Url.parse profileImgUrl
+          
           process_url profileImgUrl, transferred_headers, resp, max_redirects
         else
           output_default_avatar resp

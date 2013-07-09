@@ -50,6 +50,8 @@ finish = (resp, str) ->
 
 process_url = (url, transferred_headers, resp, remaining_redirects) ->
 
+  log url.protocol
+  
   if url.protocol? and url.protocol is 'https:'
     return redirect(resp, url.href)
 
